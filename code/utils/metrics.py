@@ -13,6 +13,18 @@ import os
 from dataloader import BasicDataset
 from sklearn.metrics import roc_auc_score
 
+def F1Score_ATk(test_data, r, k):
+    """
+    Calculate F1-score at k
+    """
+    metrics = RecallPrecision_ATk(test_data, r, k)
+    recall = metrics['recall']
+    precision = metrics['precision']
+    if recall + precision == 0:
+        return 0
+    f1_score = 2 * (precision * recall) / (precision + recall)
+    return f1_score
+
 def RecallPrecision_ATk(test_data, r, k):
     """
     test_data should be a list? cause users may have different amount of pos items. shape (test_batch, k)

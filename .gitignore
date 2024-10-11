@@ -1,0 +1,6 @@
+.DS_Store
+*__pycache__/
+code/checkpoints
+code/runs
+code/utils/sources
+data

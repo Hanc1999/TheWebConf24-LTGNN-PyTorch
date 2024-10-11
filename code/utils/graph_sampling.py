@@ -58,10 +58,14 @@ def subgraph_batches_v3(A, unique_user_n, users, pos_items, neg_items, batch_siz
         node_id = batch_data.x
         adj_t = SparseTensor(row=batch_data.edge_index[1].to(world.device), col=batch_data.edge_index[0].to(world.device), 
                              value=batch_data.edge_attr, sparse_sizes=(node_id.shape[0], node_id.shape[0]))
+        # print(f"Debug Info: batch_data attributes: {batch_data}")
         
         if world.model_name in ['lgn-vr', 'lgn-gas', 'ltgnn']:
             # This is compatible with the change of PyG versions
-            batch = batch_data.num_sampled_nodes if batch_data.batch is None else batch_data.batch
+            # batch = batch_data.num_sampled_nodes if batch_data.batch is None else batch_data.batch
+            # print(batch_data.batch)
+            # print(batch_data.num_sampled_nodes)
+            batch = batch_data.batch_size if hasattr(batch_data, 'batch_size') else None
             yield node_id, user_inv_idx, pos_inv_idx, neg_inv_idx, adj_t, batch
         else:
             root_node_mask = torch.zeros_like(node_id, device=world.device).type(torch.bool)

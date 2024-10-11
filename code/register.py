@@ -4,7 +4,7 @@ import model
 import utils
 from pprint import pprint
 
-if world.dataset in ['yelp2018', 'amazon-book']:
+if world.dataset in ['yelp2018', 'amazon-book', 'mba']:
     dataset = dataloader.Loader(path="../data/"+world.dataset)
 elif world.dataset in ['alibaba-ifashion', 'amazon3']:
     dataset = dataloader.LargeScaleLoader(path="../data/"+world.dataset)

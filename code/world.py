@@ -17,7 +17,7 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 args = parse_args()
 
 # *** Update with your local folder path!!!***
-ROOT_PATH = '/home/qwq2000/TheWebConf24-LTGNN-PyTorch/'
+ROOT_PATH = '/Users/sharkiefff/Desktop/NUS/Lab_Dissertation/WWW\'25/TheWebConf24-LTGNN-PyTorch/'
 # ********************************************
 CODE_PATH = join(ROOT_PATH, 'code')
 DATA_PATH = join(ROOT_PATH, 'data')
@@ -32,7 +32,7 @@ if not os.path.exists(FILE_PATH):
 
 
 config = {}
-all_dataset = ['yelp2018', 'alibaba-ifashion', 'amazon3']
+all_dataset = ['yelp2018', 'alibaba-ifashion', 'amazon3', 'mba']
 all_models  = ['mf', 'lgn', 'lgn-ns', 'lgn-vr', 'lgn-gas', 'ltgnn']
 # config['batch_size'] = 4096
 config['bpr_batch_size'] = args.bpr_batch

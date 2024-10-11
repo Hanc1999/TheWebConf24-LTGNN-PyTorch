@@ -113,7 +113,8 @@ def test_with_embeddings(dataset, users_emb, items_emb, epoch, K_val=3, w=None, 
     results = {'precision': np.zeros(len(world.topks)),
                'recall': np.zeros(len(world.topks)),
                'ndcg': np.zeros(len(world.topks)),
-               'hit': np.zeros(len(world.topks))}
+               'hit': np.zeros(len(world.topks)),
+               'f1': np.zeros(len(world.topks))}
     with torch.no_grad():
         users = list(testDict.keys())
         try:
@@ -168,11 +169,12 @@ def test_with_embeddings(dataset, users_emb, items_emb, epoch, K_val=3, w=None, 
             results['precision'] += result['precision']
             results['ndcg'] += result['ndcg']
             results['hit'] += result['hit']
+            results['f1'] += result['f1']
         results['recall'] /= float(len(users))
         results['precision'] /= float(len(users))
         results['ndcg'] /= float(len(users))
         results['hit'] /= float(len(users))
-        # results['auc'] = np.mean(auc_record)
+        results['f1'] /= float(len(users))
         if world.tensorboard:
             w.add_scalars(f'Test/Recall@{world.topks}(K={K_val})',
                           {str(world.topks[i]): results['recall'][i] for i in range(len(world.topks))}, epoch)
@@ -182,6 +184,8 @@ def test_with_embeddings(dataset, users_emb, items_emb, epoch, K_val=3, w=None, 
                           {str(world.topks[i]): results['ndcg'][i] for i in range(len(world.topks))}, epoch)
             w.add_scalars(f'Test/Hit@{world.topks}(K={K_val})',
                           {str(world.topks[i]): results['hit'][i] for i in range(len(world.topks))}, epoch)
+            w.add_scalars(f'Test/F1@{world.topks}(K={K_val})',
+                          {str(world.topks[i]): results['f1'][i] for i in range(len(world.topks))}, epoch)
         if multicore == 1:
             pool.close()
         results['K_val'] = K_val

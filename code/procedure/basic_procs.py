@@ -68,18 +68,20 @@ def test_one_batch(X):
     sorted_items = X[0].numpy()
     groundTrue = X[1]
     r = utils.getLabel(groundTrue, sorted_items)
-    pre, recall, ndcg = [], [], []
+    pre, recall, ndcg, f1 = [], [], [], []
     hit = []
     for k in world.topks:
         ret = utils.RecallPrecision_ATk(groundTrue, r, k)
         pre.append(ret['precision'])
         recall.append(ret['recall'])
-        ndcg.append(utils.NDCGatK_r(groundTrue,r,k))
+        ndcg.append(utils.NDCGatK_r(groundTrue, r, k))
         hit.append(ret['hit'])
+        f1.append(utils.F1Score_ATk(groundTrue, r, k))
     return {'recall':np.array(recall), 
             'precision':np.array(pre), 
             'ndcg':np.array(ndcg),
-            'hit':np.array(hit)}
+            'hit':np.array(hit),
+            'f1':np.array(f1)}
         
             
 def Test(dataset, Recmodel, epoch, w=None, multicore=0):
@@ -94,8 +96,9 @@ def Test(dataset, Recmodel, epoch, w=None, multicore=0):
         pool = multiprocessing.Pool(CORES)
     results = {'precision': np.zeros(len(world.topks)),
                'recall': np.zeros(len(world.topks)),
-               'ndcg': np.zeros(len(world.topks)), 
-               'hit': np.zeros(len(world.topks))}
+               'ndcg': np.zeros(len(world.topks)),
+               'hit': np.zeros(len(world.topks)),
+               'f1': np.zeros(len(world.topks))}
     with torch.no_grad():
         users = list(testDict.keys())
         try:
@@ -148,11 +151,12 @@ def Test(dataset, Recmodel, epoch, w=None, multicore=0):
             results['precision'] += result['precision']
             results['ndcg'] += result['ndcg']
             results['hit'] += result['hit']
+            results['f1'] += result['f1']
         results['recall'] /= float(len(users))
         results['precision'] /= float(len(users))
         results['ndcg'] /= float(len(users))
-        results['hit'] /= result['hit']
-        # results['auc'] = np.mean(auc_record)
+        results['hit'] /= float(len(users))
+        results['f1'] /= float(len(users))
         if world.tensorboard:
             w.add_scalars(f'Test/Recall@{world.topks}',
                           {str(world.topks[i]): results['recall'][i] for i in range(len(world.topks))}, epoch)
@@ -162,6 +166,8 @@ def Test(dataset, Recmodel, epoch, w=None, multicore=0):
                           {str(world.topks[i]): results['ndcg'][i] for i in range(len(world.topks))}, epoch)
             w.add_scalars(f'Test/Hit@{world.topks}',
                           {str(world.topks[i]): results['hit'][i] for i in range(len(world.topks))}, epoch)
+            w.add_scalars(f'Test/F1@{world.topks}',
+                          {str(world.topks[i]): results['f1'][i] for i in range(len(world.topks))}, epoch)
         if multicore == 1:
             pool.close()
         print(results)
@@ -180,7 +186,8 @@ def Test_accelerated(dataset, Recmodel, epoch, w=None, multicore=0):
     results = {'precision': np.zeros(len(world.topks)),
                'recall': np.zeros(len(world.topks)),
                'ndcg': np.zeros(len(world.topks)),
-               'hit': np.zeros(len(world.topks))}
+               'hit': np.zeros(len(world.topks)),
+               'f1': np.zeros(len(world.topks))}
     with torch.no_grad():
         users = list(testDict.keys())
         try:
@@ -237,11 +244,12 @@ def Test_accelerated(dataset, Recmodel, epoch, w=None, multicore=0):
             results['precision'] += result['precision']
             results['ndcg'] += result['ndcg']
             results['hit'] += result['hit']
+            results['f1'] += result['f1']
         results['recall'] /= float(len(users))
         results['precision'] /= float(len(users))
         results['ndcg'] /= float(len(users))
         results['hit'] /= float(len(users))
-        # results['auc'] = np.mean(auc_record)
+        results['f1'] /= float(len(users))
         if world.tensorboard:
             w.add_scalars(f'Test/Recall@{world.topks}',
                           {str(world.topks[i]): results['recall'][i] for i in range(len(world.topks))}, epoch)
@@ -251,6 +259,8 @@ def Test_accelerated(dataset, Recmodel, epoch, w=None, multicore=0):
                           {str(world.topks[i]): results['ndcg'][i] for i in range(len(world.topks))}, epoch)
             w.add_scalars(f'Test/Hit@{world.topks}',
                           {str(world.topks[i]): results['hit'][i] for i in range(len(world.topks))}, epoch)
+            w.add_scalars(f'Test/F1@{world.topks}',
+                          {str(world.topks[i]): results['f1'][i] for i in range(len(world.topks))}, epoch)
         if multicore == 1:
             pool.close()
         print(results)
