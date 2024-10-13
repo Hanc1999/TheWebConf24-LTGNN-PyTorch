@@ -97,6 +97,7 @@ class EmbeddingTable(nn.Module):
     def __init_weight(self):
         self.num_users  = self.dataset.n_users
         self.num_items  = self.dataset.m_items
+        
         self.latent_dim = self.config['latent_dim_rec']
         self.emb_dim = int(self.latent_dim)
 
@@ -104,12 +105,13 @@ class EmbeddingTable(nn.Module):
             num_embeddings=self.num_users, embedding_dim=self.emb_dim, sparse=True)
         self.e_item = torch.nn.Embedding(
             num_embeddings=self.num_items, embedding_dim=self.emb_dim, sparse=True)
+        # adds persona embeddings
         
         if self.config['pretrain'] == 0:
             if self.config['emb_init'] == 'xavier':
                 nn.init.xavier_uniform_(self.e_user.weight, gain=1)
                 nn.init.xavier_uniform_(self.e_item.weight, gain=1)
-            elif self.config['emb_init'] == 'normal':
+            elif self.config['emb_init'] == 'normal': # this is the default case
                 nn.init.normal_(self.e_user.weight, std=0.1)
                 nn.init.normal_(self.e_item.weight, std=0.1)
             world.cprint('Embedding - use {} initilizer'.format(self.config['emb_init']))
@@ -126,7 +128,7 @@ class EmbeddingTable(nn.Module):
             self.e_item.weight.data.copy_(emb_dict['embedding_item.weight'])
             print('Embedding - use MF embeddings')
         
-        if self.config['emb_transform'] == 'none':
+        if self.config['emb_transform'] == 'none': # this is the default case
             self.emb_t = nn.Identity()
         elif self.config['emb_transform'] == 'mlp':
             self.emb_t = nn.Sequential(
@@ -146,6 +148,8 @@ class EmbeddingTable(nn.Module):
     def embedding_item(self):
         return self.emb_t(self.e_item.weight)
     
+    # add persona embeddings here
+    
     def transform_l2_reg(self):
         reg = torch.zeros(1, device=world.device)
         for param in self.emb_t.parameters():
@@ -153,9 +157,11 @@ class EmbeddingTable(nn.Module):
         return 1/2 * reg
 
     def forward(self, id=None):
+        # modify this
         if id is None:
             users_emb = self.e_user.weight
             items_emb = self.e_item.weight
+            # add 
             all_emb = torch.cat([users_emb, items_emb])
             all_emb = self.emb_t(all_emb)
         else:

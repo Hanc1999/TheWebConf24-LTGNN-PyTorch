@@ -133,7 +133,7 @@ class LastFM(BasicDataset):
     def testDict(self):
         return self.__testDict
 
-    @property
+    @property # turns a method to an attribute
     def allPos(self):
         return self._allPos
 
@@ -186,7 +186,7 @@ class LastFM(BasicDataset):
         # print(self.UserItemNet[users, items])
         return np.array(self.UserItemNet[users, items]).astype('uint8').reshape((-1, ))
     
-    def getUserPosItems(self, users):
+    def getUserPosItems(self, users): # [[interacted tidxs,]], len=n
         posItems = []
         for user in users:
             posItems.append(self.UserItemNet[user].nonzero()[1])
@@ -231,8 +231,8 @@ class Loader(BasicDataset):
         train_file = path + '/train.txt'
         test_file = path + '/test.txt'
         self.path = path
-        trainUniqueUsers, trainItem, trainUser = [], [], []
-        testUniqueUsers, testItem, testUser = [], [], []
+        trainUniqueUsers, trainItem, trainUser = [], [], [] # for train
+        testUniqueUsers, testItem, testUser = [], [], [] # for test
         self.traindataSize = 0
         self.testDataSize = 0
 
@@ -240,15 +240,15 @@ class Loader(BasicDataset):
             for l in f.readlines():
                 if len(l) > 0:
                     l = l.strip('\n').split(' ')
-                    items = [int(i) for i in l[1:]]
-                    uid = int(l[0])
-                    trainUniqueUsers.append(uid)
-                    trainUser.extend([uid] * len(items))
+                    items = [int(i) for i in l[1:]] #[tidx]
+                    uid = int(l[0]) #uidx
+                    trainUniqueUsers.append(uid) # append the uidx
+                    trainUser.extend([uid] * len(items)) # copies the uidx
                     trainItem.extend(items)
-                    self.m_item = max(self.m_item, max(items))
-                    self.n_user = max(self.n_user, uid)
-                    self.traindataSize += len(items)
-        self.trainUniqueUsers = np.array(trainUniqueUsers)
+                    self.m_item = max(self.m_item, max(items)) # num of items
+                    self.n_user = max(self.n_user, uid) # num of users
+                    self.traindataSize += len(items) # interaction number
+        self.trainUniqueUsers = np.array(trainUniqueUsers) # transfer to numpy arrays
         self.trainUser = np.array(trainUser)
         self.trainItem = np.array(trainItem)
 
@@ -266,7 +266,7 @@ class Loader(BasicDataset):
                     self.m_item = max(self.m_item, max(items))
                     self.n_user = max(self.n_user, uid)
                     self.testDataSize += len(items)
-        self.m_item += 1
+        self.m_item += 1 # add 1 since index
         self.n_user += 1
         self.testUniqueUsers = np.array(testUniqueUsers)
         self.testUser = np.array(testUser)
@@ -277,7 +277,7 @@ class Loader(BasicDataset):
         print(f"{self.testDataSize} interactions for testing")
         print(f"{world.dataset} Sparsity : {(self.trainDataSize + self.testDataSize) / self.n_users / self.m_items}")
 
-        # (users,items), bipartite graph
+        # (users,items), bipartite graph; we need to extend this to a tripartite graph
         self.UserItemNet = csr_matrix((np.ones(len(self.trainUser)), (self.trainUser, self.trainItem)),
                                       shape=(self.n_user, self.m_item))
         
@@ -286,8 +286,8 @@ class Loader(BasicDataset):
         self.items_D = np.array(self.UserItemNet.sum(axis=0)).squeeze()
         self.items_D[self.items_D == 0.] = 1.
         # pre-calculate
-        self._allPos = self.getUserPosItems(list(range(self.n_user)))
-        self.__testDict = self.__build_test()
+        self._allPos = self.getUserPosItems(list(range(self.n_user))) # [[interacted tidxs],] for the training case
+        self.__testDict = self.__build_test() # test data structure: {uidx:[tidx]}
         print(f"{world.dataset} is ready to go")
 
     @property
@@ -344,7 +344,7 @@ class Loader(BasicDataset):
                 adj_mat = adj_mat.tolil()
                 R = self.UserItemNet.tolil()
                 adj_mat[:self.n_users, self.n_users:] = R
-                adj_mat[self.n_users:, :self.n_users] = R.T
+                adj_mat[self.n_users:, :self.n_users] = R.T # bi-directional
                 adj_mat = adj_mat.todok()
 
                 adj_mat = adj_mat + sp.eye(adj_mat.shape[0])

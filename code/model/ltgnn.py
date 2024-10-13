@@ -350,7 +350,7 @@ class LTGNN(ImplicitAPPNP):
     @torch.no_grad()
     def update_memory(self):
         if self.beta == 0:
-            if self.n_layers == 1:
+            if self.n_layers == 1: # this is the default case
                 # Single layer VR code
                 self.in_mem = self.z_mem.clone().detach()
                 self.in_mem.requires_grad_(False)

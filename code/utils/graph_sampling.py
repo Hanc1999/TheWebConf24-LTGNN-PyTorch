@@ -36,28 +36,31 @@ def subgraph_batches_v3(A, unique_user_n, users, pos_items, neg_items, batch_siz
     if isinstance(A, SparseTensor):
         edge_attr = A.storage.value()
         edge_index = torch.vstack([A.storage.row(), A.storage.col()])
-        data = Data(x=torch.arange(A.size(0)).to(world.device), edge_index=edge_index, edge_attr=edge_attr)
+        data = Data(x=torch.arange(A.size(0)).to(world.device), edge_index=edge_index, edge_attr=edge_attr) # x: node id
     else:
         data = Data(x=torch.arange(A.shape[0]).to(A.device), edge_index=A.indices(), edge_attr=A.values())
     
     # *** Caution: Use pyg-lib for sampling acceleration here. May need to fix the bugs in the PyG library (neighbor_sampler.py). ***
     loader = NeighborLoader(data, num_neighbors=[world.config['num_neighbors']] * K, 
                             directed=True, num_workers=4, pin_memory=True)
-    for i in range(0, len(users), batch_size):
+    for i in range(0, len(users), batch_size): # take batch on the user, take our their pos and neg items (one for each)
         u_batch, pi_batch, ni_batch = users[i:i + batch_size], pos_items[i:i + batch_size], neg_items[i:i + batch_size]
         
         unique_users_batch, user_inv_idx = torch.unique(u_batch, return_inverse=True)
         unique_items_batch, item_inv_idx = torch.unique(torch.cat([pi_batch, ni_batch]), 
                                                         return_inverse=True)
-        item_inv_idx += len(unique_users_batch)
+        item_inv_idx += len(unique_users_batch) # combines the index of users and items, items behind users
         real_batch_size = min(batch_size, len(users) - i)
         pos_inv_idx, neg_inv_idx = item_inv_idx[:real_batch_size], item_inv_idx[real_batch_size:]
-        root_nodes = torch.cat([unique_users_batch, unique_items_batch + unique_user_n]).cpu()
+        root_nodes = torch.cat([unique_users_batch, unique_items_batch + unique_user_n]).cpu() # the node id of these root nodes
         
-        batch_data = loader.filter_fn(loader.collate_fn(root_nodes))
-        node_id = batch_data.x
+        batch_data = loader.filter_fn(loader.collate_fn(root_nodes)) # the neighbor sampling just operates on the A
+        # [notice]: loader.collate_fn returned batch order: root nodes first, in the order, then other sampled nodes
+        # batch_data is the subgraph we want
+        node_id = batch_data.x # node ids of all sampled nodes
         adj_t = SparseTensor(row=batch_data.edge_index[1].to(world.device), col=batch_data.edge_index[0].to(world.device), 
                              value=batch_data.edge_attr, sparse_sizes=(node_id.shape[0], node_id.shape[0]))
+        # adj_t: adjacency matrix of the sampled subgraph
         # print(f"Debug Info: batch_data attributes: {batch_data}")
         
         if world.model_name in ['lgn-vr', 'lgn-gas', 'ltgnn']:

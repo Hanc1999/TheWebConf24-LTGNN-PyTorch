@@ -33,7 +33,7 @@ class NSLightGCN(BasicModel):
         
         # The degree of each node
         binary_g = torch.sparse_coo_tensor(indices=self.Graph.indices(), values=torch.ones_like(self.Graph.values()))
-        self.deg = torch.sparse.sum(binary_g, dim=1).to_dense()
+        self.deg = torch.sparse.sum(binary_g, dim=1).to_dense() # degree of each node
         
         # Could be faster? torch.sparse.FloatTensor v.s. torch_sparse.SparseTensor
         # self.Graph = SparseTensor(row=self.Graph.indices()[0], col=self.Graph.indices()[1], value=self.Graph.values())

@@ -65,8 +65,8 @@ config['loss_type'] = args.loss_type
 config['emb_dropout'] = args.emb_dropout
 
 device = torch.device('cuda:{}'.format(args.device) if torch.cuda.is_available() else "cpu")
-mem_device = torch.device('cpu') if args.memory_placement == 'cpu' else device
-cpu_emb_table = args.emb_placement == 'cpu'
+mem_device = torch.device('cpu') if args.memory_placement == 'cpu' else device # mem placement by default is gpu
+cpu_emb_table = args.emb_placement == 'cpu' # embedding placement by default is gpu
 
 CORES = multiprocessing.cpu_count() // 2
 seed = args.seed

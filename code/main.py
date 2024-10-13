@@ -16,7 +16,7 @@ from register import dataset
 import networkx as nx
 from torch_sparse import SparseTensor
 
-Recmodel = register.get_model_class(world.model_name)(world.config, dataset)
+Recmodel = register.get_model_class(world.model_name)(world.config, dataset) # returns the model class
 if not world.cpu_emb_table:
     Recmodel = Recmodel.to(world.device)
 bpr = utils.BPRLoss(Recmodel, world.config)
@@ -25,7 +25,7 @@ t = time.time()
 
 weight_file = utils.getFileName()
 print(f"load and save to {weight_file}")
-if world.LOAD:
+if world.LOAD: # by default do not
     try:
         Recmodel.load_state_dict(torch.load(weight_file,map_location=torch.device('cpu')))
         world.cprint(f"loaded model weights from {weight_file}")
@@ -45,7 +45,7 @@ else:
 try:
     # Training
     for epoch in range(world.TRAIN_epochs):
-        if epoch % world.eval_interval == 0 and epoch != 0:
+        if epoch % world.eval_interval == 0 and epoch != 0: # wierd logic
             cprint("[TEST]")
             if world.model_name in ['ltgnn']:
                 Procedure.test_LTGNN(dataset, Recmodel, epoch, w, world.config['multicore'])
@@ -58,6 +58,7 @@ try:
         # Train one epoch
         start = time.time()
         if world.model_name in ['lgn-ns', 'lgn-vr', 'lgn-gas', 'ltgnn']:
+            # train an epoch
             output_information = Procedure.train_LightGCN_NS(dataset, Recmodel, bpr.opt, epoch, neg_k=Neg_k,w=w)
         else:
             output_information = Procedure.BPR_train_original(dataset, Recmodel, bpr, epoch, neg_k=Neg_k,w=w)

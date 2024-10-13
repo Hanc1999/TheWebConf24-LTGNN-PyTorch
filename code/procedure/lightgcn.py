@@ -18,21 +18,22 @@ from random import randint
 from .basic_procs import test_one_batch
 CORES = multiprocessing.cpu_count() // 2
 
-def train_LightGCN_NS(dataset, model, opt, epoch, neg_k=1, w=None):
+def train_LightGCN_NS(dataset, model, opt, epoch, neg_k=1, w=None): # main train function
+    # dataset: dataloader.Loader
     model = model.train()
 
     with timer(name="Sample"):
-        S = utils.UniformSample_original(dataset)
+        S = utils.UniformSample_original(dataset) # just selects a pos and a neg for each sampled user
     
-    users = torch.Tensor(S[:, 0]).long()
-    posItems = torch.Tensor(S[:, 1]).long()
-    negItems = torch.Tensor(S[:, 2]).long()
+    users = torch.Tensor(S[:, 0]).long() # n
+    posItems = torch.Tensor(S[:, 1]).long() # n
+    negItems = torch.Tensor(S[:, 2]).long() # n
 
     users = users.to(world.device)
     posItems = posItems.to(world.device)
     negItems = negItems.to(world.device)
     
-    users, posItems, negItems = utils.shuffle(users, posItems, negItems)
+    users, posItems, negItems = utils.shuffle(users, posItems, negItems) # shuffle them again
     
     A = dataset.getSparseGraph()
 
