@@ -139,8 +139,9 @@ class NSAPPNP(NSLightGCN):
             light_out = self._appnp_coeff_adjust(z, input_emb, g_droped)
         else:
             light_out = z
-        users, items = torch.split(light_out, [self.num_users, self.num_items])
-        return users, items
+        users, items, personas = torch.split(light_out, [self.num_users, self.num_items, self.num_personas])
+        # users, items = torch.split(light_out, [self.num_users, self.num_items])
+        return users, items, personas
 
 class ForwardImplicitAPPNP(NSAPPNP):
     def __init__(self,
@@ -155,9 +156,12 @@ class ForwardImplicitAPPNP(NSAPPNP):
         self.K_val = self.config['K_val']
         self.prop = ForwardImplicitAPPNPLayer()
     
+    # def _init_memory(self, iteration=7):
+    #     user_emb, item_emb = super(ForwardImplicitAPPNP, self).inference(iteration)
+    #     self.z_mem = torch.vstack([user_emb, item_emb]).detach()
     def _init_memory(self, iteration=7):
-        user_emb, item_emb = super(ForwardImplicitAPPNP, self).inference(iteration)
-        self.z_mem = torch.vstack([user_emb, item_emb]).detach()
+        user_emb, item_emb, persona_emb = super(ForwardImplicitAPPNP, self).inference(iteration)
+        self.z_mem = torch.vstack([user_emb, item_emb, persona_emb]).detach()
     
     def forward(self, x, id, adj, batch):
         bias_norm = self._compute_bias_norm(id, adj)
@@ -187,8 +191,9 @@ class ForwardImplicitAPPNP(NSAPPNP):
         if coeff_adjust:
             light_out = self._appnp_coeff_adjust(z, input_emb, self.Graph)
 
-        users, items = torch.split(light_out, [self.num_users, self.num_items])
-        return users, items
+        # users, items = torch.split(light_out, [self.num_users, self.num_items])
+        users, items, personas = torch.split(light_out, [self.num_users, self.num_items, self.num_personas])
+        return users, items, personas
 
     # Try different settings of inference layers (0 for using the stored fixed point)
     @torch.no_grad()
@@ -260,7 +265,7 @@ class ImplicitAPPNP(ForwardImplicitAPPNP):
         super(ImplicitAPPNP, self).__init__(config, dataset)
         self.theta = self.config['grad_mix']
 
-        N = self.num_users + self.num_items
+        N = self.num_users + self.num_items + self.num_personas
         # Initialize z_memory with zero instead of 7-layer APPNP result
         #self.z_mem = torch.zeros(N, self.table.latent_dim).to(world.mem_device)
         self.g_mem = torch.zeros(N, self.table.latent_dim).to(world.mem_device)

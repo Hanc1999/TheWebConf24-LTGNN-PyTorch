@@ -286,7 +286,7 @@ class Loader(BasicDataset):
                 if len(l) > 0:
                     l = l.strip('\n').split(' ')
                     personas = [int(i) for i in l[1:] if len(i)]
-                    if not len(persoans):
+                    if not len(personas):
                         continue
                     uid = int(l[0])
                     uniquePersonas.update(personas)
@@ -295,7 +295,8 @@ class Loader(BasicDataset):
                     # self.m_item = max(self.m_item, max(items))
                     # self.n_user = max(self.n_user, uid)
                     # self.testDataSize += len(items)
-        self.p_persona = len(uniquePersonas)
+        # self.p_persona = len(uniquePersonas)
+        self.p_persona = 20 # fixed value
         self.uniquePersonas = np.array(list(uniquePersonas))
         self.personaUsers = np.array(personaUsers)
         self.userPersonas = np.array(userPersonas)
@@ -310,7 +311,7 @@ class Loader(BasicDataset):
                         continue
                     tid = int(l[0])
                     personaItems.extend([tid] * len(personas))
-                    itemPersonas.extend(persoans)
+                    itemPersonas.extend(personas)
         self.personaItems = np.array(personaItems)
         self.itemPersonas = np.array(itemPersonas)
         
@@ -327,6 +328,7 @@ class Loader(BasicDataset):
         self.UserPersonaNet = csr_matrix((np.ones(len(self.personaUsers)), (self.personaUsers, self.userPersonas)),
                                         shape=(self.n_user, self.p_persona))
         # (items,personas)
+        # print(f"m_item: {self.m_item}, p_persona: {self.p_persona}")
         self.ItemPersonaNet = csr_matrix((np.ones(len(self.personaItems)), (self.personaItems, self.itemPersonas)),
                                         shape=(self.m_item, self.p_persona))
 
@@ -401,8 +403,8 @@ class Loader(BasicDataset):
                 R_up = self.UserPersonaNet.tolil() # added
                 R_tp = self.ItemPersonaNet.tolil() # added
                 
-                adj_mat[:self.n_users, self.n_users:] = R
-                adj_mat[self.n_users:, :self.n_users] = R.T # bi-directional
+                adj_mat[:self.n_users, self.n_users:self.n_users+self.m_items] = R
+                adj_mat[self.n_users:self.n_users+self.m_items, :self.n_users] = R.T # bi-directional
                 adj_mat[:self.n_users, self.n_users + self.m_items:] = R_up
                 adj_mat[self.n_users + self.m_items:, :self.n_users] = R_up.T
                 adj_mat[self.n_users:self.n_users+self.m_items, self.n_users+self.m_items:] = R_tp
