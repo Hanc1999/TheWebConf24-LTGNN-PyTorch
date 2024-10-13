@@ -99,7 +99,8 @@ def test_LTGNN(dataset, Recmodel, epoch, w=None, multicore=0):
     Recmodel.eval()
 
     Ks = world.config['LTGNN_selected_Ks']
-    for idx, (users_emb, items_emb) in enumerate(Recmodel.test_inference(Ks)):
+    # further splits the return into 3 parts
+    for idx, (users_emb, items_emb, persona_emb) in enumerate(Recmodel.test_inference(Ks)): # test_inference inherits from class ForwardImplicitAPPNP
         test_with_embeddings(dataset, users_emb, items_emb, epoch, Ks[idx], w, multicore)
 
 def test_with_embeddings(dataset, users_emb, items_emb, epoch, K_val=3, w=None, multicore=0):
@@ -140,11 +141,11 @@ def test_with_embeddings(dataset, users_emb, items_emb, epoch, K_val=3, w=None, 
             #rating = rating.cpu()
             exclude_index = []
             exclude_items = []
-            for range_i, items in enumerate(allPos):
+            for range_i, items in enumerate(allPos): # should be mask off the interacted items for each user
                 exclude_index.extend([range_i] * len(items))
                 exclude_items.extend(items)
             rating[exclude_index, exclude_items] = -(1<<10)
-            _, rating_K = torch.topk(rating, k=max_K)
+            _, rating_K = torch.topk(rating, k=max_K) # selects top k items
             rating = rating.cpu().numpy()
             # aucs = [ 
             #         utils.AUC(rating[i],

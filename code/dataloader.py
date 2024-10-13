@@ -228,11 +228,19 @@ class Loader(BasicDataset):
         self.mode = self.mode_dict['train']
         self.n_user = 0
         self.m_item = 0
+        self.p_persona = 0 # added
         train_file = path + '/train.txt'
         test_file = path + '/test.txt'
+        uidx2pidx_file = path + '/uidx2pidx.txt'
+        tidx2pidx_file = path + '/tidx2pidx.txt'
         self.path = path
         trainUniqueUsers, trainItem, trainUser = [], [], [] # for train
         testUniqueUsers, testItem, testUser = [], [], [] # for test
+
+        uniquePersonas = set()
+        personaUsers, userPersonas = [], []
+        personaItems, itemPersonas = [], [] # for tidx 2 pidx
+
         self.traindataSize = 0
         self.testDataSize = 0
 
@@ -272,7 +280,42 @@ class Loader(BasicDataset):
         self.testUser = np.array(testUser)
         self.testItem = np.array(testItem)
         
+        # for uidx2pidx file
+        with open(uidx2pidx_file) as f:
+            for l in f.readlines():
+                if len(l) > 0:
+                    l = l.strip('\n').split(' ')
+                    personas = [int(i) for i in l[1:] if len(i)]
+                    if not len(persoans):
+                        continue
+                    uid = int(l[0])
+                    uniquePersonas.update(personas)
+                    personaUsers.extend([uid] * len(personas))
+                    userPersonas.extend(personas)
+                    # self.m_item = max(self.m_item, max(items))
+                    # self.n_user = max(self.n_user, uid)
+                    # self.testDataSize += len(items)
+        self.p_persona = len(uniquePersonas)
+        self.uniquePersonas = np.array(list(uniquePersonas))
+        self.personaUsers = np.array(personaUsers)
+        self.userPersonas = np.array(userPersonas)
+
+        # for tidx2pidx file
+        with open(tidx2pidx_file) as f:
+            for l in f.readlines():
+                if len(l) > 0:
+                    l = l.strip('\n').split(' ')
+                    personas = [int(i) for i in l[1:] if len(i)]
+                    if not len(personas):
+                        continue
+                    tid = int(l[0])
+                    personaItems.extend([tid] * len(personas))
+                    itemPersonas.extend(persoans)
+        self.personaItems = np.array(personaItems)
+        self.itemPersonas = np.array(itemPersonas)
+        
         self.Graph = None
+
         print(f"{self.trainDataSize} interactions for training")
         print(f"{self.testDataSize} interactions for testing")
         print(f"{world.dataset} Sparsity : {(self.trainDataSize + self.testDataSize) / self.n_users / self.m_items}")
@@ -280,11 +323,17 @@ class Loader(BasicDataset):
         # (users,items), bipartite graph; we need to extend this to a tripartite graph
         self.UserItemNet = csr_matrix((np.ones(len(self.trainUser)), (self.trainUser, self.trainItem)),
                                       shape=(self.n_user, self.m_item))
-        
-        self.users_D = np.array(self.UserItemNet.sum(axis=1)).squeeze()
-        self.users_D[self.users_D == 0.] = 1
-        self.items_D = np.array(self.UserItemNet.sum(axis=0)).squeeze()
-        self.items_D[self.items_D == 0.] = 1.
+        # (users,personas)
+        self.UserPersonaNet = csr_matrix((np.ones(len(self.personaUsers)), (self.personaUsers, self.userPersonas)),
+                                        shape=(self.n_user, self.p_persona))
+        # (items,personas)
+        self.ItemPersonaNet = csr_matrix((np.ones(len(self.personaItems)), (self.personaItems, self.itemPersonas)),
+                                        shape=(self.m_item, self.p_persona))
+
+        # self.users_D = np.array(self.UserItemNet.sum(axis=1)).squeeze()
+        # self.users_D[self.users_D == 0.] = 1
+        # self.items_D = np.array(self.UserItemNet.sum(axis=0)).squeeze()
+        # self.items_D[self.items_D == 0.] = 1.
         # pre-calculate
         self._allPos = self.getUserPosItems(list(range(self.n_user))) # [[interacted tidxs],] for the training case
         self.__testDict = self.__build_test() # test data structure: {uidx:[tidx]}
@@ -297,6 +346,10 @@ class Loader(BasicDataset):
     @property
     def m_items(self):
         return self.m_item
+    
+    @property
+    def p_personas(self):
+        return self.p_persona
     
     @property
     def trainDataSize(self):
@@ -340,11 +393,21 @@ class Loader(BasicDataset):
             except :
                 print("generating adjacency matrix")
                 s = time()
-                adj_mat = sp.dok_matrix((self.n_users + self.m_items, self.n_users + self.m_items), dtype=np.float32)
+                # adj_mat = sp.dok_matrix((self.n_users + self.m_items, self.n_users + self.m_items), dtype=np.float32)
+                adj_mat = sp.dok_matrix((self.n_users + self.m_items + self.p_personas, 
+                                         self.n_users + self.m_items + self.p_personas), dtype=np.float32)
                 adj_mat = adj_mat.tolil()
                 R = self.UserItemNet.tolil()
+                R_up = self.UserPersonaNet.tolil() # added
+                R_tp = self.ItemPersonaNet.tolil() # added
+                
                 adj_mat[:self.n_users, self.n_users:] = R
                 adj_mat[self.n_users:, :self.n_users] = R.T # bi-directional
+                adj_mat[:self.n_users, self.n_users + self.m_items:] = R_up
+                adj_mat[self.n_users + self.m_items:, :self.n_users] = R_up.T
+                adj_mat[self.n_users:self.n_users+self.m_items, self.n_users+self.m_items:] = R_tp
+                adj_mat[self.n_users+self.m_items:, self.n_users:self.n_users+self.m_items] = R_tp.T
+
                 adj_mat = adj_mat.todok()
 
                 adj_mat = adj_mat + sp.eye(adj_mat.shape[0])
@@ -364,7 +427,7 @@ class Loader(BasicDataset):
             if self.split == True:
                 self.Graph = self._split_A_hat(norm_adj)
                 print("done split matrix")
-            else:
+            else: # by default does not split
                 self.Graph = self._convert_sp_mat_to_sp_tensor(norm_adj)
                 self.Graph = self.Graph.coalesce().to(world.device)
                 print("don't split the matrix")

@@ -86,7 +86,7 @@ class NSAPPNP(NSLightGCN):
     
     def _appnp_coeff_adjust(self, z, input_emb, adj=None, id=None):
         light_out = z
-        if self.adjust_coeff[0] != 0:
+        if self.adjust_coeff[0] != 0: # by default only this, 0.2
             light_out -= input_emb * self.adjust_coeff[0]
         if self.adjust_coeff[1] != 0:
             light_out -= adj @ input_emb * self.adjust_coeff[1]
@@ -205,7 +205,7 @@ class ForwardImplicitAPPNP(NSAPPNP):
                 g_droped = self.__dropout(self.keep_prob)
             else:
                 g_droped = self.Graph        
-        else:
+        else: # this is the default case
             g_droped = self.Graph    
         
         z = input_emb
@@ -216,8 +216,8 @@ class ForwardImplicitAPPNP(NSAPPNP):
                 az = torch.sparse.mm(g_droped, z)
             z = (1 - self.alpha) * az + self.alpha * input_emb
             if layer in selected_Ks:
-                light_out = self._appnp_coeff_adjust(z, input_emb, self.Graph)
-                yield torch.split(light_out, [self.num_users, self.num_items])
+                light_out = self._appnp_coeff_adjust(z, input_emb, self.Graph) # here post-processes the embeddings
+                yield torch.split(light_out, [self.num_users, self.num_items, self.num_personas]) # here splits into 3 parts
     
 
 class ForwardImplicitAPPNPLayer(torch.autograd.Function):

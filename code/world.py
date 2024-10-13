@@ -17,7 +17,8 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 args = parse_args()
 
 # *** Update with your local folder path!!!***
-ROOT_PATH = '/Users/sharkiefff/Desktop/NUS/Lab_Dissertation/WWW\'25/TheWebConf24-LTGNN-PyTorch/'
+# ROOT_PATH = '/Users/sharkiefff/Desktop/NUS/Lab_Dissertation/WWW\'25/TheWebConf24-LTGNN-PyTorch/'
+ROOT_PATH = '/Users/shiyimin/Desktop/OneDrive - National University of Singapore/TheWebConf24-LTGNN-PyTorch/'
 # ********************************************
 CODE_PATH = join(ROOT_PATH, 'code')
 DATA_PATH = join(ROOT_PATH, 'data')

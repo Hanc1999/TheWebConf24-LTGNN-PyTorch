@@ -97,6 +97,7 @@ class EmbeddingTable(nn.Module):
     def __init_weight(self):
         self.num_users  = self.dataset.n_users
         self.num_items  = self.dataset.m_items
+        self.num_personas = self.dataset.p_personas # added
         
         self.latent_dim = self.config['latent_dim_rec']
         self.emb_dim = int(self.latent_dim)
@@ -105,6 +106,8 @@ class EmbeddingTable(nn.Module):
             num_embeddings=self.num_users, embedding_dim=self.emb_dim, sparse=True)
         self.e_item = torch.nn.Embedding(
             num_embeddings=self.num_items, embedding_dim=self.emb_dim, sparse=True)
+        self.e_persona = torch.nn.Embedding(
+            num_embeddings=self.num_personas, embedding_dim=self.emb_dim, sparse=True)
         # adds persona embeddings
         
         if self.config['pretrain'] == 0:
@@ -114,6 +117,7 @@ class EmbeddingTable(nn.Module):
             elif self.config['emb_init'] == 'normal': # this is the default case
                 nn.init.normal_(self.e_user.weight, std=0.1)
                 nn.init.normal_(self.e_item.weight, std=0.1)
+                nn.init.normal_(self.e_persona.weight, std=0.1)
             world.cprint('Embedding - use {} initilizer'.format(self.config['emb_init']))
         elif self.config['pretrain'] == 1:
             self.e_user.weight.data.copy_(torch.from_numpy(self.config['user_emb']))
@@ -148,6 +152,10 @@ class EmbeddingTable(nn.Module):
     def embedding_item(self):
         return self.emb_t(self.e_item.weight)
     
+    @property
+    def embedding_persona(self):
+        return self.emb_t(self.e_persona.weight)
+    
     # add persona embeddings here
     
     def transform_l2_reg(self):
@@ -157,20 +165,26 @@ class EmbeddingTable(nn.Module):
         return 1/2 * reg
 
     def forward(self, id=None):
+        # the id here is a batch of node ids
         # modify this
         if id is None:
             users_emb = self.e_user.weight
             items_emb = self.e_item.weight
+            persona_emb = self.e_persona.weight
             # add 
-            all_emb = torch.cat([users_emb, items_emb])
+            all_emb = torch.cat([users_emb, items_emb, persona_emb])
             all_emb = self.emb_t(all_emb)
         else:
             all_emb = torch.zeros(id.shape[0], self.emb_dim, device=self.e_user.weight.device)
-            user_mask = id < self.num_users
-            item_mask = torch.logical_not(user_mask)
+            user_mask = id < self.num_users # detect which ids are for users
+            # item_mask = torch.logical_not(user_mask)
+            item_mask = torch.logical_and(id >= self.num_users, id < self.num_users + self.num_items)
+            persona_mask = id >= self.num_users + self.num_items
+            
             all_emb[user_mask] = self.e_user(id[user_mask])
             all_emb[item_mask] = self.e_item(id[item_mask] - self.num_users)
-        
+            all_emb[persona_mask] = self.e_persona(id[persona_mask] - self.num_users - self.num_items)
+
         return all_emb
 
 class LightGCN(BasicModel):

@@ -21,6 +21,7 @@ class NSLightGCN(BasicModel):
         self.dataset: dataloader.BasicDataset = dataset
         self.num_users = self.dataset.n_users
         self.num_items = self.dataset.m_items
+        self.num_personas = self.dataset.p_personas # added
         self.latent_dim = self.config['latent_dim_rec']
         self.n_layers = self.config['lightGCN_n_layers']
         self.keep_prob = self.config['keep_prob']
