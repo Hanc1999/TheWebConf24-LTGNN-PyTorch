@@ -46,14 +46,14 @@ def UniformSample_original_python(dataset):
     users = np.random.randint(0, dataset.n_users, user_num) # randomly selects with put back
     allPos = dataset.allPos
     S = []
-    # sample_time1 = 0.
-    # sample_time2 = 0.
+    sample_time1 = 0.
+    sample_time2 = 0.
     for i, user in enumerate(users):
-        # start = time()
+        start = time()
         posForUser = allPos[user]
         if len(posForUser) == 0:
             continue
-        # sample_time2 += time() - start
+        sample_time2 += time() - start
         posindex = np.random.randint(0, len(posForUser)) # selects a single positive for this user
         positem = posForUser[posindex]
         while True:
