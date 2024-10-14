@@ -49,7 +49,7 @@ def UniformSample_original_python(dataset):
     sample_time1 = 0.
     sample_time2 = 0.
     for i, user in enumerate(users):
-        # start = time()
+        start = time()
         posForUser = allPos[user]
         if len(posForUser) == 0:
             continue
