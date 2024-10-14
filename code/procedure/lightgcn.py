@@ -103,7 +103,7 @@ def test_LTGNN(dataset, Recmodel, epoch, w=None, multicore=0):
     for idx, (users_emb, items_emb, persona_emb) in enumerate(Recmodel.test_inference(Ks)): # test_inference inherits from class ForwardImplicitAPPNP
         test_with_embeddings(dataset, users_emb, items_emb, epoch, Ks[idx], w, multicore)
 
-def test_with_embeddings(dataset, users_emb, items_emb, epoch, K_val=3, w=None, multicore=0):
+def test_with_embeddings(dataset, users_emb, items_emb, epoch, K_val=1, w=None, multicore=0):
     u_batch_size = world.config['test_u_batch_size']
     dataset: utils.BasicDataset
     testDict: dict = dataset.testDict
