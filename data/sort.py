@@ -15,7 +15,6 @@ def json_sort(json_file_path, txt_file_path):
             line = f"{key} " + " ".join(map(str, values)) + "\n"
             txt_file.write(line)
 
-json_file_path = './mba/tri_graph_tidx2pidx.json'
-txt_file_path = './mba/tidx2pidx.txt'
-
+json_file_path = './instacart/tri_graph_uidx2pidx.json'
+txt_file_path = './instacart/uidx2pidx.txt'
 json_sort(json_file_path, txt_file_path)
