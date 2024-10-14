@@ -64,7 +64,12 @@ def main_loss(users_emb, pos_emb, neg_emb):
 
     return loss
 
+# positive embeddings
+# we add the regularization for persoan nodes
 def reg_loss(users_emb0, pos_emb0, neg_emb0):
     return (1/2) * (users_emb0.norm(2).pow(2) + 
                     pos_emb0.norm(2).pow(2) +
                     neg_emb0.norm(2).pow(2)) / float(users_emb0.shape[0])
+
+def reg_loss_persona(persona_emb):
+    return (1/2) * persona_emb.norm(2).pow(2) / float(persona_emb.shape[0])

@@ -71,8 +71,12 @@ def train_LightGCN_NS(dataset, model, opt, epoch, neg_k=1, w=None): # main train
 
         user_emb0, pos_emb0, neg_emb0 = x[user_inv_idx], x[pos_inv_idx], x[neg_inv_idx]
         reg_loss = utils.reg_loss(user_emb0, pos_emb0, neg_emb0)
+        
+        # add regularization term for persona embeddings
+        persona_embs = model.table.embedding_persona.to(world.device)
+        reg_loss2 = utils.reg_loss_persona(persona_embs)
 
-        loss = main_loss + reg_loss * world.config['decay']
+        loss = main_loss + reg_loss * world.config['decay'] + reg_loss2 * world.config['decay']
         aver_loss += loss.item()
 
         opt.zero_grad()
