@@ -56,11 +56,11 @@ else:
 # make excel files to racord the training results
 F1_df = pd.DataFrame(columns=world.topks)
 NDCG_df = pd.DataFrame(columns=world.topks)
-excel_dir = f"../experiment_results/{dataset}/{model_name}/"
+excel_dir = f"../experiment_results/{dataset}/{world.model_name}/"
 today = datetime.today()
 formatted_date = today.strftime('%Y%m%d')
 excel_path = excel_dir + (
-    f"{dataset}_{model}_{formatted_date}_{world.config['lr']}"
+    f"{dataset}_{world.model_name}_{formatted_date}_{world.config['lr']}"
     f"_{world.config['decay']}_{world.config['lightGCN_n_layers']}"
     f"_{world.config['bpr_batch_size']}_{world.config['tune_index']}.xlsx"
 )
