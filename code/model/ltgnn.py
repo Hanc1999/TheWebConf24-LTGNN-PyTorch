@@ -1,62 +1,15 @@
 import world
-import torch
-import dataloader
-from dataloader import BasicDataset
-import torch.nn.functional as F
-from torch import nn
+
 import numpy as np
+import torch
+from torch import nn
+import torch.nn.functional as F
 from torch_geometric.utils import degree
 from torch_sparse import SparseTensor
-from .basic_models import LightGCN
+
+import dataloader
+from dataloader import BasicDataset
 from .lightgcn import NSLightGCN
-
-    
-class APPNP(LightGCN):
-    def __init__(self, 
-                 config:dict, 
-                 dataset:BasicDataset):
-        super(APPNP, self).__init__(config, dataset)
-        self.alpha = config['appnp_alpha']
-        self.adjust_coeff = torch.Tensor(config['appnp_adjust_coeff']).to(world.device)
-
-        if self.adjust_coeff[-1] != 0:
-            binary_g = torch.sparse_coo_tensor(indices=self.Graph.indices(), values=torch.ones_like(self.Graph.values()))
-            deg = torch.sparse.sum(binary_g, dim=1).to_dense().unsqueeze(0)
-
-            self.d_col_v = torch.sqrt(deg.T)
-            self.d_row_v = torch.sqrt(deg) / binary_g.coalesce().values().shape[0]
-
-    def computer(self):
-        """
-        propagate methods for APPNP
-        """       
-        input_emb = self.table.forward()
-
-        if self.config['dropout']:
-            if self.training:
-                print("droping")
-                g_droped = self.__dropout(self.keep_prob)
-            else:
-                g_droped = self.Graph        
-        else:
-            g_droped = self.Graph    
-        
-        z = input_emb
-        for layer in range(self.n_layers):
-            z = (1 - self.alpha) * torch.sparse.mm(g_droped, z) + self.alpha * input_emb
-        
-        light_out = z
-        if self.adjust_coeff[0] != 0:
-            light_out -= input_emb * self.adjust_coeff[0]
-        if self.adjust_coeff[1] != 0:
-            light_out -= torch.sparse.mm(g_droped, input_emb) * self.adjust_coeff[1]
-        if self.adjust_coeff[2] != 0:
-            inf_emb = self.d_col_v @ (self.d_row_v @ input_emb)
-            light_out -= inf_emb * self.adjust_coeff[2]
-        light_out /= (1 - torch.sum(self.adjust_coeff))
-
-        users, items = torch.split(light_out, [self.num_users, self.num_items])
-        return users, items
 
 class NSAPPNP(NSLightGCN):
     def __init__(self,
@@ -160,7 +113,7 @@ class ForwardImplicitAPPNP(NSAPPNP):
     #     user_emb, item_emb = super(ForwardImplicitAPPNP, self).inference(iteration)
     #     self.z_mem = torch.vstack([user_emb, item_emb]).detach()
     def _init_memory(self, iteration=7):
-        user_emb, item_emb, persona_emb = super(ForwardImplicitAPPNP, self).inference(iteration)
+        user_emb, item_emb, persona_emb = super(ForwardImplicitAPPNP, self).inference(iteration) # iteration: layer number
         self.z_mem = torch.vstack([user_emb, item_emb, persona_emb]).detach()
     
     def forward(self, x, id, adj, batch):
@@ -169,6 +122,7 @@ class ForwardImplicitAPPNP(NSAPPNP):
         input_emb = x
         z_mem = self.z_mem[id].to(world.device)
         z_out = self.prop.apply(x, adj, bias_norm, self.n_layers, self.alpha, self.beta, batch, z_mem)
+        # apply: calls .forward() first then registers .backward()
 
         # Memory update
         self.z_mem[id[:batch[0]]] = z_out[:batch[0]].detach().to(self.z_mem)
@@ -227,7 +181,7 @@ class ForwardImplicitAPPNP(NSAPPNP):
 
 class ForwardImplicitAPPNPLayer(torch.autograd.Function):
 
-    @staticmethod
+    @staticmethod # this is not a staticmethod....
     def forward(self, x, adj, bias_norm, K, alpha, beta, batch, z_mem, **kwargs):
         
         self.alpha = alpha
@@ -273,19 +227,22 @@ class ImplicitAPPNP(ForwardImplicitAPPNP):
         self.prop = ImplicitAPPNPLayer()
     
     def forward(self, x, id, adj, batch):
+        # id: node ids of all sampled nodes
         bias_norm = self._compute_bias_norm(id, adj)
 
         # Use x + 0 to create a new node in the torch computation graph
-        input_emb, implicit_input = x, x + 0
+        input_emb, implicit_input = x, x + 0 # x+0 makes a new var?
 
         # Gradient memory update hook
         def backward_hook(grad):            
+            # for each batch, updates the corresponding nodes' stored gradients
             self.g_mem[id[:batch[0]]] = (1 - torch.sum(self.adjust_coeff)) * grad[:batch[0]].detach().to(self.g_mem)
             return grad
         
         # Only the gradients of the implicit layers are saved in memory
         #x.register_hook(backward_hook)
         implicit_input.register_hook(backward_hook)
+        # customizes the backward propagation procedure of the variable 'implicit_input'
 
         z_mem, g_mem = self.z_mem[id].to(world.device), self.g_mem[id].to(world.device)
         z_out = self.prop.apply(implicit_input, adj, bias_norm, self.n_layers, self.alpha, 
@@ -345,6 +302,7 @@ class LTGNN(ImplicitAPPNP):
                  config: dict,
                  dataset: BasicDataset):
         super(LTGNN, self).__init__(config, dataset)
+        # in the initialization the self.z_mem is just the trainable embeddings
 
         # Initialize VR memory
         self.update_memory()
@@ -354,11 +312,11 @@ class LTGNN(ImplicitAPPNP):
 
     @torch.no_grad()
     def update_memory(self):
-        if self.beta == 0:
+        if self.beta == 0: # removes the beta
             if self.n_layers == 1: # this is the default case
                 # Single layer VR code
-                self.in_mem = self.z_mem.clone().detach()
-                self.in_mem.requires_grad_(False)
+                self.in_mem = self.z_mem.clone().detach() # stores the trainable embeddings at this epoch as M_in
+                self.in_mem.requires_grad_(False) # as constants
 
                 A = self.Graph
                 if isinstance(A, SparseTensor):
@@ -366,34 +324,36 @@ class LTGNN(ImplicitAPPNP):
                 else:
                     az = torch.sparse.mm(A, self.in_mem)
                 
-                self.in_aggr_mem = az.clone().detach()
+                self.in_aggr_mem = az.clone().detach() # stores the M_agg
                 self.in_aggr_mem.requires_grad_(False)
             else:
+                # not implemented
+                raise NotImplementedError('Not Implemented self.n_layers != 1')
                 # Multi layer VR code
 
-                # Space assignment
-                N = self.num_items + self.num_users
-                self.in_mem = torch.empty(self.n_layers, N, self.table.emb_dim).to(world.device)
-                self.in_aggr_mem = torch.empty(self.n_layers, N, self.table.emb_dim).to(world.device)
+                # # Space assignment
+                # N = self.num_items + self.num_users
+                # self.in_mem = torch.empty(self.n_layers, N, self.table.emb_dim).to(world.device)
+                # self.in_aggr_mem = torch.empty(self.n_layers, N, self.table.emb_dim).to(world.device)
 
-                # Initialization
-                A = self.Graph
-                self.in_mem[0, :, :] = self.z_mem.clone().detach()
+                # # Initialization
+                # A = self.Graph
+                # self.in_mem[0, :, :] = self.z_mem.clone().detach()
 
-                # Propagation
-                for i in range(self.n_layers):
-                    if isinstance(A, SparseTensor):
-                        in_aggr = A @ self.in_mem[i]
-                    else:
-                        in_aggr = torch.sparse.mm(A, self.in_mem[i])
-                    self.in_aggr_mem[i, :, :] = in_aggr.clone().detach()
-                    if i != self.n_layers - 1:
-                        in_next = (1 - self.alpha) * in_aggr + self.alpha * self.in_mem[0]
-                        self.in_mem[i + 1, :, :] = in_next.clone().detach()
+                # # Propagation
+                # for i in range(self.n_layers):
+                #     if isinstance(A, SparseTensor):
+                #         in_aggr = A @ self.in_mem[i]
+                #     else:
+                #         in_aggr = torch.sparse.mm(A, self.in_mem[i])
+                #     self.in_aggr_mem[i, :, :] = in_aggr.clone().detach()
+                #     if i != self.n_layers - 1:
+                #         in_next = (1 - self.alpha) * in_aggr + self.alpha * self.in_mem[0]
+                #         self.in_mem[i + 1, :, :] = in_next.clone().detach()
 
-                # No gradient for memory space
-                self.in_mem.requires_grad_(False)
-                self.in_aggr_mem.requires_grad_(False)
+                # # No gradient for memory space
+                # self.in_mem.requires_grad_(False)
+                # self.in_aggr_mem.requires_grad_(False)
         else:
             raise NotImplementedError('Not Implemented beta != 0')
     
@@ -437,7 +397,7 @@ class LTGNN(ImplicitAPPNP):
 
 class VRImplicitAPPNPLayer(torch.autograd.Function):
 
-    @staticmethod
+    @staticmethod # why this is a staticmethod??
     def forward(self, x, in_mem, in_aggr_mem, adj, bias_norm, K, alpha, beta, theta, batch, z_mem, g_mem, **kwargs):
         
         self.alpha = alpha

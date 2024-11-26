@@ -90,7 +90,7 @@ def train_LightGCN_NS(dataset, model, opt, epoch, neg_k=1, w=None): # main train
     
     if world.model_name == 'ltgnn' and epoch % world.config['vr_update_interval'] == 0:
         print('Computing full aggregation for all nodes...')
-        model.update_memory()
+        model.update_memory() # update the stored M_in and M_ag at the end of per epoch.
     
     aver_loss = aver_loss / total_batch
     time_info = timer.dict()
@@ -101,11 +101,13 @@ def train_LightGCN_NS(dataset, model, opt, epoch, neg_k=1, w=None): # main train
 
 def test_LTGNN(dataset, Recmodel, epoch, w=None, multicore=0):
     Recmodel.eval()
-
+    test_results = []
     Ks = world.config['LTGNN_selected_Ks']
     # further splits the return into 3 parts
     for idx, (users_emb, items_emb, persona_emb) in enumerate(Recmodel.test_inference(Ks)): # test_inference inherits from class ForwardImplicitAPPNP
-        test_with_embeddings(dataset, users_emb, items_emb, epoch, Ks[idx], w, multicore)
+        res = test_with_embeddings(dataset, users_emb, items_emb, epoch, Ks[idx], w, multicore)
+        test_results.append(res)
+    return test_results
 
 def test_with_embeddings(dataset, users_emb, items_emb, epoch, K_val=1, w=None, multicore=0):
     u_batch_size = world.config['test_u_batch_size']
@@ -192,8 +194,9 @@ def test_with_embeddings(dataset, users_emb, items_emb, epoch, K_val=1, w=None, 
                           {str(world.topks[i]): results['hit'][i] for i in range(len(world.topks))}, epoch)
             w.add_scalars(f'Test/F1@{world.topks}(K={K_val})',
                           {str(world.topks[i]): results['f1'][i] for i in range(len(world.topks))}, epoch)
+        
         if multicore == 1:
             pool.close()
         results['K_val'] = K_val
-        print(results)
+        # print(results)
         return results

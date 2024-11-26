@@ -1,8 +1,10 @@
+import datetime
 import world
 import utils
 from world import cprint
 import torch
 import numpy as np
+import pandas as pd
 from tensorboardX import SummaryWriter
 import time
 import procedure as Procedure
@@ -15,6 +17,15 @@ import register
 from register import dataset
 import networkx as nx
 from torch_sparse import SparseTensor
+from print_save import save_value
+
+def record_in_an_epoch(F1_df, NDCG_df, test_results, epoch, path_excel,):
+    ares = test_results[0] # here only considers the first result, which is a python dictionary
+    f1 = ares['f1']
+    ndcg = ares['ndcg']
+    F1_df.loc[epoch + 1] = f1
+    NDCG_df.loc[epoch + 1] = ndcg
+    save_value([[F1_df, 'F1'], [NDCG_df, 'NDCG']], path_excel, first_sheet=False)
 
 Recmodel = register.get_model_class(world.model_name)(world.config, dataset) # returns the model class
 if not world.cpu_emb_table:
@@ -42,19 +53,32 @@ else:
     w = None
     world.cprint("not enable tensorflowboard")
 
+# make excel files to racord the training results
+F1_df = pd.DataFrame(columns=world.topks)
+NDCG_df = pd.DataFrame(columns=world.topks)
+excel_dir = f"../experiment_results/{dataset}/{model_name}/"
+today = datetime.today()
+formatted_date = today.strftime('%Y%m%d')
+excel_path = excel_dir + (
+    f"{dataset}_{model}_{formatted_date}_{world.config['lr']}"
+    f"_{world.config['decay']}_{world.config['lightGCN_n_layers']}"
+    f"_{world.config['bpr_batch_size']}_{world.config['tune_index']}.xlsx"
+)
+
 try:
     # Training
     for epoch in range(world.TRAIN_epochs):
         if epoch % world.eval_interval == 0 and epoch != 0: # wierd logic
             cprint("[TEST]")
             if world.model_name in ['ltgnn']:
-                Procedure.test_LTGNN(dataset, Recmodel, epoch, w, world.config['multicore'])
+                test_results = Procedure.test_LTGNN(dataset, Recmodel, epoch, w, world.config['multicore'])
+                record_in_an_epoch(F1_df, NDCG_df, test_results, epoch, excel_path,)
             else:
                 if world.model_name == 'mf':
                     Procedure.Test(dataset, Recmodel, epoch, w, world.config['multicore'])
                 else:
                     Procedure.Test_accelerated(dataset, Recmodel, epoch, w, world.config['multicore'])
-        
+
         # Train one epoch
         start = time.time()
         if world.model_name in ['lgn-ns', 'lgn-vr', 'lgn-gas', 'ltgnn']:

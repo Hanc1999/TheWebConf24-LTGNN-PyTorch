@@ -1,10 +1,3 @@
-'''
-Created on Mar 1, 2020
-Pytorch Implementation of LightGCN in
-Xiangnan He et al. LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation
-
-@author: Jianbai Ye (gusye@mail.ustc.edu.cn)
-'''
 import world
 import numpy as np
 from dataloader import BasicDataset
@@ -67,4 +60,3 @@ def UniformSample_original_python(dataset):
         sample_time1 += end - start
     total = time() - total_start
     return np.array(S)
-

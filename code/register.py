@@ -23,11 +23,11 @@ print("using bpr loss")
 print('===========end===================')
 
 MODELS = {
-    'mf': model.PureMF,
-    'lgn': model.LightGCN,
-    'lgn-ns': model.NSLightGCN,
-    'lgn-vr': model.VRLightGCN,
-    'lgn-gas': model.GASLightGCN,
+    # 'mf': model.PureMF,
+    # 'lgn': model.LightGCN,
+    # 'lgn-ns': model.NSLightGCN,
+    # 'lgn-vr': model.VRLightGCN,
+    # 'lgn-gas': model.GASLightGCN,
     'ltgnn': model.LTGNN,
 }
 

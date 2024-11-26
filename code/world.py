@@ -1,11 +1,3 @@
-'''
-Created on Mar 1, 2020
-Pytorch Implementation of LightGCN in
-Xiangnan He et al. LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation
-
-@author: Jianbai Ye (gusye@mail.ustc.edu.cn)
-'''
-
 import os
 from os.path import join
 import torch
@@ -17,8 +9,7 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 args = parse_args()
 
 # *** Update with your local folder path!!!***
-# ROOT_PATH = '/Users/sharkiefff/Desktop/NUS/Lab_Dissertation/WWW\'25/TheWebConf24-LTGNN-PyTorch/'
-ROOT_PATH = '/Users/shiyimin/Desktop/OneDrive - National University of Singapore/TheWebConf24-LTGNN-PyTorch/'
+ROOT_PATH = './'
 # ********************************************
 CODE_PATH = join(ROOT_PATH, 'code')
 DATA_PATH = join(ROOT_PATH, 'data')
@@ -64,6 +55,7 @@ config['vr_update_interval'] = 1
 config['loss_type'] = args.loss_type
 
 config['emb_dropout'] = args.emb_dropout
+config['tune_index'] = args.tune_index
 
 device = torch.device('cuda:{}'.format(args.device) if torch.cuda.is_available() else "cpu")
 mem_device = torch.device('cpu') if args.memory_placement == 'cpu' else device # mem placement by default is gpu
@@ -71,6 +63,7 @@ cpu_emb_table = args.emb_placement == 'cpu' # embedding placement by default is 
 
 CORES = multiprocessing.cpu_count() // 2
 seed = args.seed
+
 
 dataset = args.dataset
 model_name = args.model
@@ -106,6 +99,3 @@ logo = r"""
 ███████╗╚██████╔╝██║ ╚████║
 ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝
 """
-# font: ANSI Shadow
-# refer to http://patorjk.com/software/taag/#p=display&f=ANSI%20Shadow&t=Sampling
-# print(logo)
