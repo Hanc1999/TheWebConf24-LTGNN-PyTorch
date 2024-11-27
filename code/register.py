@@ -10,7 +10,7 @@ elif world.dataset in ['alibaba-ifashion', 'amazon3']:
     dataset = dataloader.LargeScaleLoader(path="../data/"+world.dataset)
 elif world.dataset == 'lastfm':
     dataset = dataloader.LastFM()
-        
+
 print('===========config================')
 pprint(world.config)
 print("cores for test:", world.CORES)
