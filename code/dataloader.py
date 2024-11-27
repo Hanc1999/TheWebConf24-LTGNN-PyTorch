@@ -287,7 +287,7 @@ class Loader(BasicDataset):
                     # self.n_user = max(self.n_user, uid)
                     # self.testDataSize += len(items)
         # self.p_persona = len(uniquePersonas)
-        self.p_persona = 20 if world.dataset == "mba" else 50 # fixed value
+        self.p_persona = 20 if world.dataset == "mba" else 51 # fixed value
         self.uniquePersonas = np.array(list(uniquePersonas))
         self.personaUsers = np.array(personaUsers)
         self.userPersonas = np.array(userPersonas)
