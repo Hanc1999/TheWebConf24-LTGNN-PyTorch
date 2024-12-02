@@ -1,10 +1,3 @@
-'''
-Created on Mar 1, 2020
-Pytorch Implementation of LightGCN in
-Xiangnan He et al. LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation
-
-@author: Jianbai Ye (gusye@mail.ustc.edu.cn)
-'''
 import argparse
 
 
@@ -62,5 +55,6 @@ def parse_args():
     parser.add_argument('--emb_dropout', type=float, default=0)
     parser.add_argument('--appnp_adjust_coeff', type=str, default='[0.2, 0, 0]')
     parser.add_argument('--LTGNN_selected_Ks', type=str, default='[3]')
-    
+    parser.add_argument('--tune_index', type=int, default=0)
+
     return parser.parse_args()
