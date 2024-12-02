@@ -71,7 +71,7 @@ try:
         if epoch % world.eval_interval == 0 and epoch != 0: # wierd logic
             cprint("[TEST]")
             if world.model_name in ['ltgnn']:
-                Procedure.test_LTGNN(dataset, Recmodel, epoch, w, world.config['multicore'])
+                test_results = Procedure.test_LTGNN(dataset, Recmodel, epoch, w, world.config['multicore'])
                 record_in_an_epoch(F1_df, NDCG_df, test_results, epoch, excel_path,)
             else:
                 if world.model_name == 'mf':
