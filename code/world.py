@@ -17,7 +17,8 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 args = parse_args()
 
 # *** Update with your local folder path!!!***
-ROOT_PATH = '/Users/sharkiefff/Desktop/NUS/Lab_Dissertation/WWW\'25/TheWebConf24-LTGNN-PyTorch/'
+# ROOT_PATH = '/Users/sharkiefff/Desktop/NUS/Lab_Dissertation/WWW\'25/TheWebConf24-LTGNN-PyTorch/'
+ROOT_PATH = './'
 # ********************************************
 CODE_PATH = join(ROOT_PATH, 'code')
 DATA_PATH = join(ROOT_PATH, 'data')
@@ -63,6 +64,7 @@ config['vr_update_interval'] = 1
 config['loss_type'] = args.loss_type
 
 config['emb_dropout'] = args.emb_dropout
+config['tune_index'] = args.tune_index
 
 device = torch.device('cuda:{}'.format(args.device) if torch.cuda.is_available() else "cpu")
 mem_device = torch.device('cpu') if args.memory_placement == 'cpu' else device # mem placement by default is gpu
